@@ -159,15 +159,14 @@ class LabelEncoder(object):
         if len(self.freqs) == 0:
             logger.warning("Computing vocabulary for empty encoder {}"
                             .format(self.name))
-
-        if self.max_size:
-            most_common = self.freqs.most_common(n=self.max_size)
-        elif self.min_freq:
-            most_common = [it for it in self.freqs.items() if it[1] >= self.min_freq]
+            
+        vocab = self.freqs.most_common(n=self.max_size)
+        if self.min_freq:
+            vocab = [v for v, freq in vocab if freq >= self.min_freq]
         else:
-            most_common = self.freqs.most_common()
+            vocab = [v for v, _ in vocab]
 
-        self.inverse_table = list(self.reserved) + [sym for sym, _ in most_common]
+        self.inverse_table = list(self.reserved) + vocab
         self.table = {sym: idx for idx, sym in enumerate(self.inverse_table)}
         self.fitted = True
 
@@ -422,6 +421,10 @@ class MultiLabelEncoder(object):
         self.nsents = None
         self.noise_strategies = noise_strategies or {}
 
+    @property
+    def all_label_encoders(self):
+        return [self.word, self.char] + list(self.tasks.values())
+
     def __repr__(self):
         return (
             '<MultiLabelEncoder>\n\t' +
@@ -489,24 +492,24 @@ class MultiLabelEncoder(object):
             skip_fitted and expand_mode are exclusive.
         """
         assert not (expand_mode and skip_fitted), "parameters expand_mode and skip_fitted are exclusive"
-        all_label_encoders = [self.word, self.char] + list(self.tasks.values())
+        lencs_to_update = self.all_label_encoders
         if expand_mode is True:
-            list_le_to_expand = [le for le in all_label_encoders if le.fitted is True]
-            list_le_to_fit = [le for le in all_label_encoders if le not in list_le_to_expand]
-            if list_le_to_fit:
+            lencs_to_expand = [le for le in lencs_to_update if le.fitted is True]
+            lencs_to_fit = [le for le in lencs_to_update if le not in lencs_to_expand]
+            if lencs_to_fit:
                 logger.warning(
-                    f"Expanding only the label encoders {list_le_to_expand} "
-                    f"and fitting the rest from scratch {list_le_to_fit}")
-            for le in list_le_to_expand:
+                    f"Expanding only the label encoders {lencs_to_expand} "
+                    f"and fitting the rest from scratch {lencs_to_fit}")
+            for le in lencs_to_expand:
                 le.fitted = False
         else:
             if skip_fitted:
-                all_label_encoders = [le for le in all_label_encoders if le.fitted is False]
-                if not all_label_encoders:
+                lencs_to_update = [le for le in lencs_to_update if le.fitted is False]
+                if not lencs_to_update:
                     logger.info("All label encoders have been fitted already !")
                     return self
-            list_le_to_expand = []
-            list_le_to_fit = all_label_encoders
+            lencs_to_expand = []
+            lencs_to_fit = lencs_to_update
 
         for inp in lines:
             tasks = None
@@ -514,20 +517,20 @@ class MultiLabelEncoder(object):
                 inp, tasks = inp
 
             # input
-            if self.word in all_label_encoders:
+            if self.word in lencs_to_update:
                 self.word.add(inp)
-            if self.char in all_label_encoders:
+            if self.char in lencs_to_update:
                 self.char.add(inp)
 
             for le in self.tasks.values():
-                if le not in all_label_encoders:
+                if le not in lencs_to_update:
                     continue
                 le.add(tasks[le.target], inp)
 
-        for le in list_le_to_fit:
+        for le in lencs_to_fit:
             le.compute_vocab()
         
-        for le in list_le_to_expand:
+        for le in lencs_to_expand:
             le.expand_vocab()
 
         if self.noise_strategies["uppercase"]["apply"]:
