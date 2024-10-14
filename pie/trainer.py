@@ -1,6 +1,7 @@
 import inspect
 import os
 import uuid
+import hashlib
 import logging
 import time
 import collections
@@ -345,8 +346,11 @@ class Trainer(object):
         rep_batches = collections.defaultdict(int)
         rep_items, rep_start = 0, time.time()
         scores = None
+        data_hash = hashlib.sha1(usedforsecurity=False)  # TODO Debug remove
 
         for b, batch in enumerate(self.dataset.batch_generator(apply_noise=self.noise_strategies)):
+            data_hash.update(str(hash(tuple(batch[0]))).encode())  # TODO Debug remove
+
             # get loss
             loss = self.model.loss(batch, get_batch_task(self.model.tasks.values()))
 
@@ -385,6 +389,8 @@ class Trainer(object):
                         time.time() - rep_start))
                     rep_start = time.time()
 
+        print(f"Hash of data seen during epoch: {data_hash.hexdigest()}")  # TODO Debug remove
+
         return scores
 
     def train_epochs(self, epochs, devset=None):
@@ -403,7 +409,8 @@ class Trainer(object):
                 epoch_total = time.time() - epoch_start
                 logging.info("Finished epoch [{}] in [{:.0f}] secs".format(
                     epoch, epoch_total))
-
+                # DEBUG: save model at each epoch
+                self.model.save(f"papie/PaPie-dev/models_compare_epochs_2/{self.settings.modelname}-epoch-{epoch}", settings=self.settings)
         except EarlyStopException as e:
             logging.info("Early stopping training: "
                          "task [{}] with best score {:.4f}".format(e.task, e.loss))
