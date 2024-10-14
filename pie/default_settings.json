@@ -6,7 +6,9 @@
   // * General
   "modelname": "model", // model name to be used for saving
   "modelpath": "./", // model path to be used for saving
+  "run_test": false, // run in test mode (no serialization)
   "seed": "auto", // set a seed number or 'auto' to let the training script define it
+  "deterministic": false, // Set to True to use only deterministic algorithms 
 
   // * Data
   "input_path": "", // path (unix-like expression) to files with training data
@@ -122,7 +124,6 @@
   "batch_size": 50, // batch size
   "shuffle": true, // whether to shuffle input batches
   "device": "cpu", // device to be used for training (use cuda:device_number for GPU)
-  "run_test": false, // run in test mode (no serialization)
   "pretrain_embeddings": false, // whether to use word2vec to initialize the embeddings
   "load_pretrained_embeddings": "", // file with pretrained embeddings in word2vec format
   "load_pretrained_encoder": "", // path to file with pretrained sentence encoder

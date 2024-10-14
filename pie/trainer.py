@@ -209,6 +209,7 @@ class Trainer(object):
         self.verbose = settings.verbose
         self.dataset = dataset
         self.model = model
+        self.settings = settings
         self.optimizer = self.get_optimizer(settings.optimizer)(
             model.parameters(), lr=settings.lr, **settings.optimizer_params)
         self.clip_norm = settings.clip_norm
@@ -403,12 +404,14 @@ class Trainer(object):
                 epoch_total = time.time() - epoch_start
                 logging.info("Finished epoch [{}] in [{:.0f}] secs".format(
                     epoch, epoch_total))
-
+                if epoch == 1 or epoch % 10 == 0:
+                    self.model.save(f"papie/PaPie-dev/models_compare_epochs_2/{self.settings.modelname}-epoch-{epoch}", settings=self.settings)
         except EarlyStopException as e:
             logging.info("Early stopping training: "
                          "task [{}] with best score {:.4f}".format(e.task, e.loss))
-
+            self.model.save(f"papie/PaPie-dev/models_compare_epochs_2/{self.settings.modelname}-epoch-{epoch}", settings=self.settings)
             self.model.load_state_dict(e.best_state_dict)
+            self.model.save(f"papie/PaPie-dev/models_compare_epochs_2/{self.settings.modelname}-epoch-best", settings=self.settings)
             scores = {e.task: e.loss}
 
         logging.info("Finished training in [{:.0f}] secs".format(time.time() - start))
