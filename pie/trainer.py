@@ -207,9 +207,10 @@ class Trainer(object):
     """
     def __init__(self, settings, model, dataset, num_instances):
         self.target_task = get_target_task(settings)
-        self.verbose = settings.verbose
-        self.dataset = dataset
+        self.verbose = settings.verbose        
+        self.dataset = dataset        
         self.model = model
+        self.settings = settings
         self.optimizer = self.get_optimizer(settings.optimizer)(
             model.parameters(), lr=settings.lr, **settings.optimizer_params)
         self.clip_norm = settings.clip_norm
