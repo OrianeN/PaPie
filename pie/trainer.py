@@ -350,7 +350,7 @@ class Trainer(object):
         data_hash = hashlib.sha1(usedforsecurity=False)  # TODO Debug remove
 
         for b, batch in enumerate(self.dataset.batch_generator(apply_noise=self.noise_strategies)):
-            data_hash.update(str(hash(tuple(batch[0]))).encode())  # TODO Debug remove
+            data_hash.update(str(batch[0]).encode())  # TODO Debug remove
 
             # get loss
             loss = self.model.loss(batch, get_batch_task(self.model.tasks.values()))

@@ -39,6 +39,7 @@ def run(settings, seed):
     if seed is None:
         if settings.seed == "auto":
             seed = now.hour * 10000 + now.minute * 100 + now.second
+            settings.seed = seed
         else:
             seed = settings.seed
             assert isinstance(seed, int), "Seed should be an integer"
