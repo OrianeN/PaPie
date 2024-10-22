@@ -50,12 +50,12 @@ def run(settings, seed=None):
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed(seed)
-    # if settings.deterministic is True:
-        # print("Deterministic run")
-        # torch.use_deterministic_algorithms(True)
-        # if torch.cuda.is_available():
-        #     torch.backends.cudnn.benchmark = False
-        # os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
+    if settings.deterministic is True:
+        print("Deterministic run")
+        torch.use_deterministic_algorithms(True)
+        if torch.cuda.is_available():
+            torch.backends.cudnn.benchmark = False
+        os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
 
     if settings.verbose:
         logging.basicConfig(level=logging.INFO, force=True)
