@@ -731,6 +731,9 @@ class Dataset(object):
         self.label_encoder = label_encoder
         self.cached = []
 
+        # set seed
+        random.seed(settings.seed)
+
     @staticmethod
     def get_nelement(batch):
         """
