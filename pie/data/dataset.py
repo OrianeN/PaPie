@@ -162,7 +162,10 @@ class LabelEncoder(object):
             
         vocab = self.freqs.most_common(n=self.max_size)
         if self.min_freq:
+            # Filter based on min_freq
             vocab = [v for v, freq in vocab if freq >= self.min_freq]
+            # Change order to reading order (self.freqs) to be able to reproduce older experiments
+            vocab = [v for v in self.freqs if v in vocab]
         else:
             vocab = [v for v, _ in vocab]
 
