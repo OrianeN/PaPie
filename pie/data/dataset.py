@@ -34,7 +34,7 @@ class LabelEncoder(object):
     """
     def __init__(self, level='token', name=None, target=None,
                  lower=False, utfnorm=False, utfnorm_type='NFKD', drop_diacritics=False,
-                 preprocessor=None, max_size=None, min_freq=1,
+                 preprocessor=None, max_size=None, min_freq=None,
                  pad=True, eos=False, bos=False, reserved=(), **meta):
 
         if level.lower() not in ('token', 'char'):

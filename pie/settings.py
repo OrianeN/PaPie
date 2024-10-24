@@ -41,12 +41,21 @@ class Settings(dict):
 
 
 def merge_task_defaults(settings):
+    def merge_dicts(current_dict, default_dict):
+        """Recursive function that will take all keys from a 1st dict 
+        and add missing keys and values from the default dict, 
+        for the given dict and all dicts they contain"""
+        for dkey, dval in default_dict.items():
+            current_dict[dkey] = current_dict.get(dkey, dval)
+            if isinstance(dval, dict) and set(current_dict[dkey]) != set(dval):
+                merge_dicts(current_dict[dkey], dval)
+
     for task in settings.tasks:
         task_settings = task.get("settings", {})
         task_settings["target"] = task_settings.get("target", task['name'])
         task['settings'] = task_settings
-        for tkey, tval in settings.task_defaults.items():
-            task[tkey] = task.get(tkey, tval)
+
+        merge_dicts(task, settings.task_defaults)
 
     return settings
 
