@@ -40,7 +40,10 @@ def get_target_task(settings):
     for task in settings.tasks:
         if task.get('target'):
             return task['name']
-    raise ValueError("No target task?")
+    if len(settings.tasks) >= 1:
+        raise ValueError("No target task?")
+    else:
+        return None  # i.e. pretraining only
 
 
 class EarlyStopException(Exception):
@@ -330,7 +333,13 @@ class Trainer(object):
             dev_scores['lm_bwd'] = dev_loss['lm_bwd']
 
         self.task_scheduler.step(dev_scores, self.model)
-        self.lr_scheduler.step(dev_scores[self.target_task])
+        if self.target_task:
+            lr_scheduler_loss = dev_scores[self.target_task]
+        elif "lm_fwd" in dev_loss or "lm_bwd" in dev_loss:
+            lr_scheduler_loss = dev_loss.get("lm_fwd", 0) + dev_loss.get("lm_bwd", 0)
+        else:
+            raise ValueError(f"No task found to update the lr_scheduler (no target task and no lm) !")
+        self.lr_scheduler.step(lr_scheduler_loss)
 
         if self.verbose:
             print(self.task_scheduler)
@@ -348,7 +357,10 @@ class Trainer(object):
 
         for b, batch in enumerate(self.dataset.batch_generator(apply_noise=self.noise_strategies)):
             # get loss
-            loss = self.model.loss(batch, get_batch_task(self.model.tasks.values()))
+            if self.model.tasks:
+                loss = self.model.loss(batch, get_batch_task(self.model.tasks.values()))
+            else:
+                loss = self.model.loss(batch)
 
             if not loss:
                 raise ValueError("Got empty loss, no tasks defined?")

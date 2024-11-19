@@ -103,7 +103,7 @@ def check_settings(settings):
             if has_target:
                 raise ValueError("Got more than one target task")
             has_target = True
-    if not has_target:
+    if not has_target and len(tasks) >= 1:
         raise ValueError("Needs at least one target task")
 
     # backward compatibility

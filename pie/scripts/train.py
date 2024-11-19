@@ -229,7 +229,7 @@ def run(settings, seed=None):
         model.eval()
     running_time = time.time() - running_time
 
-    if settings.test_path:
+    if settings.test_path and len(settings.tasks) >= 1:
         print("Evaluating model on test set")
         try:
             testset = Dataset(settings, Reader(settings, settings.test_path), label_encoder)

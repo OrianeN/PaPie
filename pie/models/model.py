@@ -93,14 +93,15 @@ class SimpleModel(BaseModel):
 
         # Encoder
         self.encoder = None
-        needs_encoder = False
-        for task in self.tasks.values():
-            if task['level'] == 'token':
-                needs_encoder = True
-                break
-            elif task.get('context', '').lower() in ('sentence', 'both'):
-                needs_encoder = True
-                break
+        needs_encoder = self.include_lm
+        if not needs_encoder:
+            for task in self.tasks.values():
+                if task['level'] == 'token':
+                    needs_encoder = True
+                    break
+                elif task.get('context', '').lower() in ('sentence', 'both'):
+                    needs_encoder = True
+                    break
         if not needs_encoder:
             print("Model doesn't need sentence encoder, leaving uninitialized")
         else:
