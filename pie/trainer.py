@@ -227,7 +227,7 @@ class Trainer(object):
         else:
             self.check_freq = 0  # no checks
 
-        self.task_scheduler = TaskScheduler(settings)
+        self.task_scheduler = TaskScheduler(settings) if len(settings.tasks) >= 1 else None
         self.lr_scheduler = LRScheduler(
             self.optimizer,
             lr_scheduler=settings.lr_scheduler,
@@ -246,10 +246,11 @@ class Trainer(object):
             print("Evaluation check every {}/{} batches".format(
                 self.check_freq, self.num_batches))
             print()
-            print("::: Task schedules :::")
-            print()
-            print(self.task_scheduler)
-            print()
+            if self.task_scheduler:
+                print("::: Task schedules :::")
+                print()
+                print(self.task_scheduler)
+                print()
             print("::: LR schedule :::")
             print()
             print(self.lr_scheduler)
@@ -273,7 +274,7 @@ class Trainer(object):
         """
         Apply weights to losses and return a single loss number
         """
-        weights = self.task_scheduler.get_weights()
+        weights = self.task_scheduler.get_weights() if self.task_scheduler else {}
 
         return sum(weights.get(k, 1) * loss[k] for k in loss)
 
@@ -331,8 +332,11 @@ class Trainer(object):
         if 'lm_fwd' in dev_loss or 'lm_bwd' in dev_loss:
             dev_scores['lm_fwd'] = dev_loss['lm_fwd']
             dev_scores['lm_bwd'] = dev_loss['lm_bwd']
-
-        self.task_scheduler.step(dev_scores, self.model)
+        
+        # Update TaskScheduler
+        if self.task_scheduler:
+            self.task_scheduler.step(dev_scores, self.model)
+        # Update LR_Scheduler
         if self.target_task:
             lr_scheduler_loss = dev_scores[self.target_task]
         elif "lm_fwd" in dev_loss or "lm_bwd" in dev_loss:
@@ -342,8 +346,9 @@ class Trainer(object):
         self.lr_scheduler.step(lr_scheduler_loss)
 
         if self.verbose:
-            print(self.task_scheduler)
-            print()
+            if self.task_scheduler:
+                print(self.task_scheduler)
+                print()
             print(self.lr_scheduler)
             print()
 
