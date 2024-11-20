@@ -6,6 +6,7 @@ from pie.utils import get_filenames
 
 from .tabreader import TabReader
 from .conll_reader import CONLLReader, CONLLUReader
+from .plaintext_reader import PlainTextReader
 
 
 class Reader(object):
@@ -54,6 +55,9 @@ class Reader(object):
 
         elif fpath.endswith('conllu'):
             return CONLLUReader
+        
+        elif fpath.endswith('txt'):
+            return PlainTextReader
 
         else:
             raise ValueError("Unknown file format: {}".format(fpath))

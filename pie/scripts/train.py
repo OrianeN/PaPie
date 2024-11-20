@@ -58,8 +58,13 @@ def run(settings, seed=None):
     if settings.verbose:
         print("::: Available tasks :::")
         print()
-        for task in tasks:
-            print("- {}".format(task))
+        if len(tasks) >= 1:
+            for task in tasks:
+                print("- {}".format(task))
+        else:
+            assert settings.include_lm, \
+                "No target task is defined - include_lm is mandatory for the pretraining task"
+            print("- pretraining")
         print()
 
     # label encoder
