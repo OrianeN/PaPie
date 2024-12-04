@@ -427,6 +427,14 @@ class Trainer(object):
 
             self.model.load_state_dict(e.best_state_dict)
             scores = {e.task: e.loss}
+        else:
+            # Load best model (only possible when a target task is defined)
+            if self.task_scheduler:
+                print(f"Loading best model for target task {self.target_task}")
+                best_state_dict = torch.load(self.task_scheduler.fid)
+                self.model.load_state_dict(best_state_dict)
+            else:
+                print("Cannot load best model for the pretraining task, using last model instead.")
 
         logging.info("Finished training in [{:.0f}] secs".format(time.time() - start))
 
