@@ -60,14 +60,20 @@ class TaskScheduler(object):
     def __init__(self, settings):
         tasks = {}
         # preprocess tasks
+        found_target_task = False
         for task in settings.tasks:
             # add schedule and target
             tasks[task['name']] = task.get('schedule', {})
-            tasks[task['name']]['target'] = task.get('target', False)
-            # add task data for lm loss
-            if settings.include_lm:
-                tasks['lm_fwd'] = dict(settings.lm_schedule)
-                tasks['lm_bwd'] = dict(settings.lm_schedule)
+            task_is_target = task.get('target', False)
+            if task_is_target:
+                found_target_task = True
+            tasks[task['name']]['target'] = task_is_target
+        # add task data for lm loss
+        self.is_pretraining = not found_target_task
+        if settings.include_lm:
+            tasks['lm_fwd'] = dict(settings.lm_schedule)
+            tasks['lm_bwd'] = dict(settings.lm_schedule)
+            tasks['lm_fwd']['target'] = self.is_pretraining
 
         for task, tdata in tasks.items():
             # set step counter
@@ -144,7 +150,7 @@ class TaskScheduler(object):
                     os.remove(self.fid)
                     raise EarlyStopException(task, self.tasks[task]['best'], state_dict)
                 # update task weight
-                else:
+                elif not self.is_pretraining:
                     factor = self.tasks[task].get('factor', self.factor)
                     new_weight = self.tasks[task]['weight'] * factor
                     min_weight = self.tasks[task].get('min_weight', self.min_weight)
@@ -227,7 +233,7 @@ class Trainer(object):
         else:
             self.check_freq = 0  # no checks
 
-        self.task_scheduler = TaskScheduler(settings) if len(settings.tasks) >= 1 else None
+        self.task_scheduler = TaskScheduler(settings)
         self.lr_scheduler = LRScheduler(
             self.optimizer,
             lr_scheduler=settings.lr_scheduler,
@@ -246,11 +252,10 @@ class Trainer(object):
             print("Evaluation check every {}/{} batches".format(
                 self.check_freq, self.num_batches))
             print()
-            if self.task_scheduler:
-                print("::: Task schedules :::")
-                print()
-                print(self.task_scheduler)
-                print()
+            print("::: Task schedules :::")
+            print()
+            print(self.task_scheduler)
+            print()
             print("::: LR schedule :::")
             print()
             print(self.lr_scheduler)
@@ -274,7 +279,7 @@ class Trainer(object):
         """
         Apply weights to losses and return a single loss number
         """
-        weights = self.task_scheduler.get_weights() if self.task_scheduler else {}
+        weights = self.task_scheduler.get_weights()
 
         return sum(weights.get(k, 1) * loss[k] for k in loss)
 
@@ -334,8 +339,7 @@ class Trainer(object):
             dev_scores['lm_bwd'] = dev_loss['lm_bwd']
         
         # Update TaskScheduler
-        if self.task_scheduler:
-            self.task_scheduler.step(dev_scores, self.model)
+        self.task_scheduler.step(dev_scores, self.model)
         # Update LR_Scheduler
         if self.target_task:
             lr_scheduler_loss = dev_scores[self.target_task]
@@ -422,19 +426,16 @@ class Trainer(object):
                     epoch, epoch_total))
 
         except EarlyStopException as e:
-            logging.info("Early stopping training: "
-                         "task [{}] with best score {:.4f}".format(e.task, e.loss))
+            logging.info("Early stopping training at epoch [{}]: "
+                         "task [{}] with best score {:.4f}".format(epoch, e.task, e.loss))
 
             self.model.load_state_dict(e.best_state_dict)
             scores = {e.task: e.loss}
         else:
             # Load best model (only possible when a target task is defined)
-            if self.task_scheduler:
-                print(f"Loading best model for target task {self.target_task}")
-                best_state_dict = torch.load(self.task_scheduler.fid)
-                self.model.load_state_dict(best_state_dict)
-            else:
-                print("Cannot load best model for the pretraining task, using last model instead.")
+            print(f"Loading best model for target task {self.target_task}")
+            best_state_dict = torch.load(self.task_scheduler.fid)
+            self.model.load_state_dict(best_state_dict)
 
         logging.info("Finished training in [{:.0f}] secs".format(time.time() - start))
 
