@@ -342,12 +342,12 @@ class Trainer(object):
         self.task_scheduler.step(dev_scores, self.model)
         # Update LR_Scheduler
         if self.target_task:
-            lr_scheduler_loss = dev_scores[self.target_task]
+            lr_scheduler_score = dev_scores[self.target_task]
         elif "lm_fwd" in dev_loss or "lm_bwd" in dev_loss:
-            lr_scheduler_loss = dev_loss.get("lm_fwd", 0) + dev_loss.get("lm_bwd", 0)
+            lr_scheduler_score = dev_loss.get("lm_fwd", 0) + dev_loss.get("lm_bwd", 0)
         else:
             raise ValueError(f"No task found to update the lr_scheduler (no target task and no lm) !")
-        self.lr_scheduler.step(lr_scheduler_loss)
+        self.lr_scheduler.step(lr_scheduler_score)
 
         if self.verbose:
             if self.task_scheduler:
