@@ -64,6 +64,18 @@ def get_known_and_ambigous_tokens(trainset, label_encoders):
     return known, ambs
 
 
+def get_lm_known_tokens(trainset):
+    """ Retrieve known tokens for the lm task, for one dataset
+
+    :param trainset: Trainset
+    :return: Known set of tokens
+    """
+    known = set()
+    for _, (inp, tasks) in trainset.reader.readsents():
+        known.update(inp)
+    return known
+
+
 def compute_scores(trues, preds):
 
     enc = _LocalEncoder(*trues, *preds)
@@ -88,12 +100,13 @@ class Scorer(object):
     """
     Accumulate predictions over batches and compute evaluation scores
     """
-    def __init__(self, label_encoder):
+    def __init__(self, label_encoder, task_name=None):
         self.label_encoder = label_encoder
         self.known_tokens = self.amb_tokens = None
         self.preds = []
         self.trues = []
         self.tokens = []
+        self.task_name = task_name or self.label_encoder.name
 
     def set_known_and_amb(self, known_tokens, amb_tokens):
         """ Set known tokens as well as ambiguous tokens """
@@ -310,7 +323,7 @@ class Scorer(object):
 
         print()
         if markdown:
-            print("## " + self.label_encoder.name)
+            print("## " + self.task_name)
         else:
             print("::: Evaluation report for task: {} :::".format(
                 self.label_encoder.name))

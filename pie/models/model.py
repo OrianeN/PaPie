@@ -549,7 +549,7 @@ class SimpleModel(BaseModel):
         return output
 
     def predict(self, inp, *tasks, return_probs=False,
-                use_beam=False, beam_width=10, **kwargs):
+                use_beam=False, beam_width=10, use_lm=False, **kwargs):
         """
         inp : (word, wlen), (char, clen), text input
         tasks : list of str, target tasks
@@ -598,6 +598,21 @@ class SimpleModel(BaseModel):
 
             preds[task] = hyps
             probs[task] = prob
+
+        # (LM)
+        if use_lm is True:
+            if len(emb) > 1:  # can't compute loss for 1-length batches # TODO What if this happens during evaluation ?
+                # always at first layer
+                fwd, bwd = enc_outs[0].chunk(2, dim=2)
+                # forward logits
+                hyps, prob = self.lm_fwd_decoder.predict(torch_utils.pad(fwd[:-1], pos='pre'), wlen)
+                preds["lm_fwd"] = hyps
+                probs["lm_fwd"] = prob
+                # backward logits
+                hyps, prob = self.lm_fwd_decoder.predict(torch_utils.pad(bwd[1:], pos='post'), wlen)
+                preds["lm_bwd"] = hyps
+                probs["lm_bwd"] = prob
+
 
         if return_probs:
             return preds, probs

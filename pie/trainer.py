@@ -6,6 +6,7 @@ import time
 import collections
 import random
 import tempfile
+import warnings
 from typing import ClassVar
 
 import tqdm
@@ -434,8 +435,14 @@ class Trainer(object):
         else:
             # Load best model (only possible when a target task is defined)
             print(f"Loading best model for target task {self.target_task}")
-            best_state_dict = torch.load(self.task_scheduler.fid)
-            self.model.load_state_dict(best_state_dict)
+            if os.path.exists(self.task_scheduler.fid):
+                best_state_dict = torch.load(self.task_scheduler.fid)
+                self.model.load_state_dict(best_state_dict)
+            else:
+                warnings.warn(
+                    f"Temp path with best model weights doesn't exist ({self.task_scheduler.fid})\n"
+                    "Maybe the model never improved over training ?"
+                )
 
         logging.info("Finished training in [{:.0f}] secs".format(time.time() - start))
 

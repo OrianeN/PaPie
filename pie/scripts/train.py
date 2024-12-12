@@ -247,11 +247,8 @@ def run(settings, seed=None):
         print()
         print('\n'.join('{}: {:.4f}'.format(k, v) for k, v in dev_loss.items()))
         print()
-        summary = model.evaluate(devset, trainer.dataset)
-        for task_name, scorer in summary.items():
-            stored_scores[task_name] = scorer.get_scores()
-            scorer.print_summary(scores=stored_scores[task_name])
-
+        for task in model.evaluate(devset, trainset, score_lm=len(settings.tasks) == 0).values():
+            task.print_summary()
 
     # evaluate best model on test set
     if settings.test_path and len(settings.tasks) >= 1:

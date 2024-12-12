@@ -11,7 +11,7 @@ from pie import utils
 from pie.data import MultiLabelEncoder
 from pie.settings import Settings
 
-from .scorer import Scorer, get_known_and_ambigous_tokens
+from .scorer import Scorer, get_known_and_ambigous_tokens, get_lm_known_tokens
 
 
 class BaseModel(nn.Module):
@@ -44,6 +44,20 @@ class BaseModel(nn.Module):
             self._fitted_trainset_scorer = True
         scorer.set_known_and_amb(self.known, self.ambs[task])
         return scorer
+    
+    def get_lm_scorer(self, trainset=None, task_name=None):
+        """Gets a scorer for the lm task. Trainset can be used for computing
+        unknown tokens.
+
+        :param task: Taskname (str)
+        :param trainset: Dataset for training
+        :return: Scorer
+        """
+        scorer = Scorer(self.label_encoder.word, task_name=task_name)
+        if not self._fitted_trainset_scorer and trainset:
+            self.known = get_lm_known_tokens(trainset)
+        scorer.set_known_and_amb(self.known, [])
+        return scorer
 
     def loss(self, batch_data):
         """
@@ -63,7 +77,7 @@ class BaseModel(nn.Module):
         """
         raise NotImplementedError
 
-    def evaluate(self, dataset, trainset=None, **kwargs):
+    def evaluate(self, dataset, trainset=None, score_lm=False, **kwargs):
         """
         Get scores per task
 
@@ -75,12 +89,15 @@ class BaseModel(nn.Module):
         assert not self.training, "Ooops! Inference in training mode. Call model.eval()"
 
         scorers = {task: self.get_scorer(task, trainset) for task in self.tasks}
+        if score_lm:
+            scorers["lm_fwd"] = self.get_lm_scorer(trainset, task_name="lm_fwd")
+            scorers["lm_bwd"] = self.get_lm_scorer(trainset, task_name="lm_bwd")
 
         with torch.no_grad():
             for (inp, tasks), (rinp, rtasks) in tqdm.tqdm(
                     dataset.batch_generator(return_raw=True)):
 
-                preds = self.predict(inp, **kwargs)
+                preds = self.predict(inp, use_lm=score_lm, **kwargs)
 
                 # - get input tokens
                 tokens = [w for line in rinp for w in line]
@@ -88,14 +105,24 @@ class BaseModel(nn.Module):
                 # - get trues
                 trues = {}
                 for task in preds:
-                    le = self.label_encoder.tasks[task]
-                    # - transform targets
-                    trues[task] = le.preprocess(
-                        [t for line in rtasks for t in line[le.target]], tokens)
+                    if task in ["lm_fwd", "lm_bwd"]:
+                        le = self.label_encoder.word
+
+                        # - transform targets
+                        trues[task] = le.preprocess(
+                            [
+                                w for line in rinp for w in line 
+                                if len(line) > 1  # Sentences with only 1 word are ignored during predictions
+                            ])
+                    else:
+                        le = self.label_encoder.tasks[task]
+                        # - transform targets
+                        trues[task] = le.preprocess(
+                            [t for line in rtasks for t in line[le.target]], tokens)
 
                     # - flatten token level predictions
                     if le.level == 'token':
-                        preds[task] = [pred for batch in preds[task] for pred in batch]
+                        preds[task] = [pred for batch in preds[task] for pred in batch]                    
 
                 # accumulate
                 for task, scorer in scorers.items():
