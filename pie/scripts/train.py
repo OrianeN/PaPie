@@ -247,7 +247,10 @@ def run(settings, seed=None):
         print()
         print('\n'.join('{}: {:.4f}'.format(k, v) for k, v in dev_loss.items()))
         print()
-        for task in model.evaluate(devset, trainset, score_lm=len(settings.tasks) == 0).values():
+        score_lm = len(settings.tasks) == 0
+        for task in model.evaluate(devset, trainset, score_lm=score_lm).values():
+            if score_lm and task.task_name in ["lm_fwd", "lm_bwd"]:
+                task.print_sample_predictions()
             task.print_summary()
 
     # evaluate best model on test set

@@ -374,6 +374,13 @@ class Scorer(object):
         return classification_report(
             y_true=self.trues,
             y_pred=self.preds)
+    
+    def print_sample_predictions(self, k=200):
+        print(f"\n::: Sample predictions for task  {self.task_name} :::")
+        print("- trues: ")
+        print(self.trues[:k])
+        print("- preds: ")
+        print(self.preds[:k])
 
     @staticmethod
     def scores_in_markdown(scores):
