@@ -24,7 +24,7 @@ class LinearDecoder(nn.Module):
     in_features : int, input dimension
     """
     def __init__(self, label_encoder, in_features, dropout=0.0,
-                 highway_layers=0, highway_act='relu'):
+                 highway_layers=0, highway_act='relu', loss_ignore_index=None):
         self.label_encoder = label_encoder
         super().__init__()
 
@@ -39,6 +39,11 @@ class LinearDecoder(nn.Module):
         # decoder output
         self.decoder = nn.Linear(in_features, len(label_encoder))
         self.init()
+        # loss indexes to ignore
+        if loss_ignore_index is not None:
+            self.loss_ignore_index = loss_ignore_index
+        else:
+            self.loss_ignore_index = self.label_encoder.get_pad()
 
     def init(self):
         # linear
@@ -55,7 +60,7 @@ class LinearDecoder(nn.Module):
         loss = F.cross_entropy(
             logits.view(-1, len(self.label_encoder)), targets.view(-1),
             weight=self.nll_weight, reduction="mean",
-            ignore_index=self.label_encoder.get_pad())
+            ignore_index=self.loss_ignore_index)
 
         return loss
 

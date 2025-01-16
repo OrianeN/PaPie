@@ -161,11 +161,11 @@ class SimpleModel(BaseModel):
 
         # - LM
         if self.include_lm:
-            self.lm_fwd_decoder = LinearDecoder(label_encoder.word, hidden_size)
+            self.lm_fwd_decoder = LinearDecoder(label_encoder.word, hidden_size, loss_ignore_index=-100)
             if lm_shared_softmax:
                 self.lm_bwd_decoder = self.lm_fwd_decoder
             else:
-                self.lm_bwd_decoder = LinearDecoder(label_encoder.word, hidden_size)
+                self.lm_bwd_decoder = LinearDecoder(label_encoder.word, hidden_size, loss_ignore_index=-100)
 
     def get_args_and_kwargs(self):
         return {'args': (self.wemb_dim, self.cemb_dim,
@@ -539,6 +539,14 @@ class SimpleModel(BaseModel):
                 fwd, bwd = F.dropout(
                     enc_outs[0], p=0, training=self.training
                 ).chunk(2, dim=2)
+                # Mark word targets with indexes to ignore (PAD and UNK)
+                index_pad = self.label_encoder.word.get_pad()
+                index_unk = self.label_encoder.word.table[pie.constants.UNK]
+                word = torch.where(
+                    torch.isin(word, torch.tensor([index_pad, index_unk]).to(word.device)), 
+                    self.lm_fwd_decoder.loss_ignore_index,  # -100
+                    word
+                )
                 # forward logits
                 logits = self.lm_fwd_decoder(torch_utils.pad(fwd[:-1], pos='pre'))
                 output['lm_fwd'] = self.lm_fwd_decoder.loss(logits, word)
